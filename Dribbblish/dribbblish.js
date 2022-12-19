@@ -12,6 +12,7 @@ const DribbblishShared = {
     }
 };
 
+// register drib menu item
 DribbblishShared.configMenu.register();
 DribbblishShared.configMenu.addItem(new Spicetify.Menu.Item(
     "Right expanded cover",
@@ -35,8 +36,8 @@ function waitForElement(els, func, timeout = 100) {
 }
 
 waitForElement([
-    `.main-rootlist-rootlistPlaylistsScrollNode ul[tabindex="0"]`,
-    `.main-rootlist-rootlistPlaylistsScrollNode ul[tabindex="0"] li`
+    `ul[tabindex="0"]`,
+    `ul[tabindex="0"] .GlueDropTarget--playlists.GlueDropTarget--folders`
 ], ([root, firstItem]) => {
     const listElem = firstItem.parentElement;
     root.classList.add("dribs-playlist-list");
@@ -59,13 +60,13 @@ waitForElement([
                     img.classList.add("playlist-picture");
                     link.prepend(img);
                 }
-                img.src = base64  || "/images/tracklist-row-song-fallback.svg";
+                img.src = base64  || "https://cdn.jsdelivr.net/gh/spicetify/spicetify-themes@master/Dribbblish/images/tracklist-row-song-fallback.svg";
                 continue;
             }
 
             Spicetify.CosmosAsync.get(
                 `sp://core-playlist/v1/playlist/${uri.toURI()}/metadata`,
-                { policy: { picture: true } }
+            { policy: { picture: true } }
             ).then(res => {
                 const meta = res.metadata;
                 let img = link.querySelector("img");
@@ -74,7 +75,7 @@ waitForElement([
                     img.classList.add("playlist-picture");
                     link.prepend(img);
                 }
-                img.src = meta.picture || "/images/tracklist-row-song-fallback.svg";
+                img.src = meta.picture || "https://cdn.jsdelivr.net/gh/spicetify/spicetify-themes@master/Dribbblish/images/tracklist-row-song-fallback.svg";
             });
         }
     }
@@ -86,18 +87,13 @@ waitForElement([
         .observe(listElem, {childList: true});
 });
 
-waitForElement([".Root__main-view"], ([mainView]) => {
+waitForElement([".Root__top-container"], ([topContainer]) => {
     const shadow = document.createElement("div");
     shadow.id = "dribbblish-back-shadow";
-    mainView.prepend(shadow);
+    topContainer.prepend(shadow);
 });
 
-waitForElement([".main-rootlist-rootlistPlaylistsScrollNode"], (queries) => {
-    const fade = document.createElement("div");
-    fade.id = "dribbblish-sidebar-fade-in";
-    queries[0].append(fade);
-});
-
+// allow resizing of the navbar
 waitForElement([
     ".Root__nav-bar .LayoutResizer__input, .Root__nav-bar .LayoutResizer__resize-bar input"
 ], ([resizer]) => {
@@ -117,14 +113,43 @@ waitForElement([
     updateVariable();
 });
 
+// allow resizing of the buddy feed
+waitForElement([".Root__right-sidebar .LayoutResizer__input, .Root__right-sidebar .LayoutResizer__resize-bar input"], ([resizer]) => {
+    const observer = new MutationObserver(updateVariable);
+    observer.observe(resizer, { attributes: true, attributeFilter: ["value"] });
+    function updateVariable() {
+        let value = resizer.value;
+        if (value == 320) {
+            value = 72;
+            document.documentElement.classList.add("buddyFeed-hide-text");
+        } else {
+            document.documentElement.classList.remove("buddyFeed-hide-text");
+        }
+    }
+    updateVariable();
+});
+
+// add fade effect on playlist/folder list
+waitForElement([".main-navBar-navBar .os-viewport.os-viewport-native-scrollbars-invisible"], ([scrollNode]) => {
+    scrollNode.setAttribute("fade", "bottom");
+    scrollNode.addEventListener("scroll", () => {
+        if (scrollNode.scrollTop == 0) {
+            scrollNode.setAttribute("fade", "bottom");
+        } else if (scrollNode.scrollHeight - scrollNode.clientHeight - scrollNode.scrollTop == 0) {
+            scrollNode.setAttribute("fade", "top");
+        } else {
+            scrollNode.setAttribute("fade", "full");
+        }
+    });
+});
+
+// improve styles at smaller sizes
 waitForElement([".Root__main-view .os-resize-observer-host"], ([resizeHost]) => {
     const observer = new ResizeObserver(updateVariable);
     observer.observe(resizeHost);
     function updateVariable([ event ]) {
         document.documentElement.style.setProperty(
             "--main-view-width", event.contentRect.width + "px");
-        document.documentElement.style.setProperty(
-            "--main-view-height", event.contentRect.height + "px");
         if (event.contentRect.width < 700) {
             document.documentElement.classList.add("minimal-player");
         } else {
@@ -139,6 +164,7 @@ waitForElement([".Root__main-view .os-resize-observer-host"], ([resizeHost]) => 
 });
 
 (function Dribbblish() {
+    // dynamic playback time tooltip
     const progBar = document.querySelector(".playback-bar");
     const root = document.querySelector(".Root");
 
@@ -152,7 +178,7 @@ waitForElement([".Root__main-view .os-resize-observer-host"], ([resizeHost]) => 
     progBar.append(tooltip);
 
     const progKnob = progBar.querySelector(".progress-bar__slider");
-    
+
     function updateProgTime({ data: e }) {
         const offsetX = progKnob.offsetLeft + progKnob.offsetWidth / 2;
         const maxWidth = progBar.offsetWidth;
@@ -180,6 +206,7 @@ waitForElement([".Root__main-view .os-resize-observer-host"], ([resizeHost]) => 
         }
     });
 
+    // filepicker for custom folder images
     const filePickerForm = document.createElement("form");
     filePickerForm.setAttribute("aria-hidden", true);
     filePickerForm.innerHTML = '<input type="file" class="hidden-visually" />';
@@ -217,6 +244,7 @@ waitForElement([".Root__main-view .os-resize-observer-host"], ([resizeHost]) => 
         reader.readAsDataURL(file);
     }
 
+    // context menu items for custom folder images
     new Spicetify.ContextMenu.Item("Remove folder image",
         ([uri]) => {
             const id = Spicetify.URI.from(uri).id;
