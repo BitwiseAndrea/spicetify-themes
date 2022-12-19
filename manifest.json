@@ -110,6 +110,9 @@
 		"readme": "Water/README.md",
 		"usercss": "Water/user.css",
 		"schemes": "Water/color.ini",
+		"include": [
+			"https://raw.githubusercontent.com/spicetify/spicetify-themes/master/Water/water.js"
+		],
 		"authors": [
 			{
 				"name": "bitwiseandrea",
